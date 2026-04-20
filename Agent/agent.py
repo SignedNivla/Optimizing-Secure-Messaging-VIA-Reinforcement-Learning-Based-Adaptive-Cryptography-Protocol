@@ -57,7 +57,7 @@ class QLearningAgent:
         new_value = old_value + self.alpha * (target -old_value)
         self.q_table[state][action] = new_value
 
-    def train(self,epsiodes = 5000):
+    def train(self,epsiodes = 10000):
         is_new = self._load_brain()
         history = {'reward':[],'battery_life':[]}
         env = EncryptionEnvironment()

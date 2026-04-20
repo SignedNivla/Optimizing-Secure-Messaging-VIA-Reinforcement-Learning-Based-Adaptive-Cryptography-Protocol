@@ -63,22 +63,22 @@ class EncryptionEnvironment:
         size =self.size.get_label()
         priority=self.priority.get_label()
 
-        w_sec = 0.5
-        w_eff = 0.5
+        w_sec = 0.4
+        w_eff = 0.6
 
         # ------------
         # First Layer
         # ------------
         if network == "public" or threat == "high":
-            if battery == 'low' or signal =='low' or size == 'large' or priority == 'important':
-                w_sec = 0.8
-                w_eff = 0.2
+            if battery == '0-10' or signal =='weak' or size == 'large' or priority == 'important':
+                w_sec = 0.7
+                w_eff = 0.3
             else:
                 w_sec = 0.9
                 w_eff = 0.1
-        elif battery == "low" or signal == 'low':
-            w_sec = 0.2
-            w_eff = 0.8
+        elif battery == "0-10" or signal == 'weak':
+            w_sec = 0.1
+            w_eff = 0.9
         elif size == 'large' or priority == 'important':
             w_sec = 0.4
             w_eff = 0.6
