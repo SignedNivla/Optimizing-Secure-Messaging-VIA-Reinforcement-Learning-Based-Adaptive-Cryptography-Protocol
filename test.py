@@ -9,10 +9,11 @@ test_case = {
     "efficiency": (1, "private", 95, 5, 20, 1), 
     "heavy_load": (3, "public", 50, 2, 500, 3), 
     "weak_signal_tax": (2, "public", 30, 0, 150, 2),
-    "lowest_need":(1,'private',10,0,200,0)
+    "lowest_need":(1,'private',10,0,200,0),
+    'critical': (3, "public", 5, 0, 1000, 3)
 }
 
-ag = agent()
+ag = agent(filename='final_model.pkl')
 
 for test in test_case.keys():
     print(f'Test for {test}')
