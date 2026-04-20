@@ -5,12 +5,11 @@ from Agent.state_component import NetworkState, BatteryState,PriorityState,Signa
 
 class EncryptionEnvironment:
     def __init__(self,threat:ThreatState = None,network:NetworkState = None,battery:BatteryState = None,signal:SignalState = None,size:SizeState = None,priority:PriorityState = None):
-        self.threat = ThreatState(self.generate_random_threat()) if not threat else threat
-        self.network = NetworkState(self.generate_random_network()) if not network else network
-        self.battery = BatteryState(100) if not battery else battery
-        self.signal = SignalState(self.generate_random_signal()) if not signal else signal
-        self.size = SizeState(self.generate_random_size()) if not size else size
-        self.priority= PriorityState(self.generate_random_priority()) if not priority else priority
+        self.threat = threat if threat else ThreatState(self.generate_random_threat())
+        self.network = network if network else NetworkState(self.generate_random_network())
+        self.battery = battery if battery else BatteryState(100)
+        self.signal = signal if signal else SignalState(self.generate_random_signal())
+        self.size = size if size else SizeState(self.generate_random_size())
 
     def reset(self):
         self.threat.set_value(self.generate_random_threat())
