@@ -25,7 +25,7 @@ class ChaCha20Algorithm(EncryptionAlgorithm):
     def decrypt(self, cipher_text:str) -> str:
         cipher = Cipher(algorithms.ChaCha20(self._key,self._nonce),mode=None,backend=default_backend())
         decryptor = cipher.decryptor()
-        plain_text = decryptor.update(cipher_text.encode()) + decryptor.finalize()
+        plain_text = decryptor.update(cipher_text) + decryptor.finalize()
         return plain_text.decode('utf-8')
     def generate_random_key(self):
         self._key = os.urandom(32)

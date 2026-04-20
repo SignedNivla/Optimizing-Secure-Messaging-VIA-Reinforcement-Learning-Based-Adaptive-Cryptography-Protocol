@@ -1,2 +1,4 @@
 .env
 .venv/
+agent_brain.pkl
+*__pycache__
