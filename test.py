@@ -8,7 +8,8 @@ test_case = {
     "survival" : (3,"public",10,100,1,3),
     "efficiency": (1, "private", 95, 5, 20, 1), 
     "heavy_load": (3, "public", 50, 2, 500, 3), 
-    "weak_signal_tax": (2, "public", 30, 0, 150, 2)
+    "weak_signal_tax": (2, "public", 30, 0, 150, 2),
+    "lowest_need":(1,'private',10,0,200,0)
 }
 
 ag = agent()

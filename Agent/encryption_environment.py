@@ -10,6 +10,7 @@ class EncryptionEnvironment:
         self.battery = battery if battery else BatteryState(100)
         self.signal = signal if signal else SignalState(self.generate_random_signal())
         self.size = size if size else SizeState(self.generate_random_size())
+        self.priority = priority if priority else PriorityState(self.generate_random_priority())
 
     def reset(self):
         self.threat.set_value(self.generate_random_threat())

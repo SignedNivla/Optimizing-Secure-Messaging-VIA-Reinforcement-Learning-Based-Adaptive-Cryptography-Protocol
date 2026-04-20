@@ -90,7 +90,7 @@ class QLearningAgent:
             print("Error: No brain found. Train the agent first.")
             return
         env = EncryptionEnvironment(threat,network,battery,signal,size,priority)
-        action = self._choose_action(env,False)
+        action = self._choose_action(env._get_current_state(),False)
         print("--- Agent Decision Report ---")
         print(f"Context: {env.threat.get_label()} threat on a {env.network.get_label()} network.")
         print(f"Device Status: Battery at {env.battery.get_label()}%, Signal is {env.signal.get_label()}.")
