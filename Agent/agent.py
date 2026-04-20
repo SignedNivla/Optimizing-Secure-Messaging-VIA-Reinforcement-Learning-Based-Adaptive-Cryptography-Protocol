@@ -57,8 +57,8 @@ class QLearningAgent:
         new_value = old_value + self.alpha * (target -old_value)
         self.q_table[state][action] = new_value
 
-    def train(self,epsiodes = 10000):
-        is_new = self._load_brain()
+    def train(self,epsiodes = 10000, filename = None):
+        is_new = self._load_brain(filename)
         history = {'reward':[],'battery_life':[]}
         env = EncryptionEnvironment()
         for i in range(epsiodes):
@@ -81,11 +81,11 @@ class QLearningAgent:
             if i % 100 == 0:
                 print(f"Threat: {env.threat.get_label()}, Battery: {env.battery.get_label()}, Size: {env.size.get_label()} -> Action: {action}")
                 print(f"Episode {i}: Avg Reward: {sum(history['reward'][-100:])/100}, Battery Life: {history['battery_life'][-1]}")
-        self._save_brain()
+        self._save_brain(filename)
         return history
     
-    def test(self, threat:ThreatState = None,network:NetworkState = None,battery:BatteryState = None,signal:SignalState = None,size:SizeState = None,priority:PriorityState = None):
-        is_not_exist = self._load_brain()
+    def test(self, filename = None,threat:ThreatState = None,network:NetworkState = None,battery:BatteryState = None,signal:SignalState = None,size:SizeState = None,priority:PriorityState = None):
+        is_not_exist = self._load_brain(filename)
         if is_not_exist: 
             print("Error: No brain found. Train the agent first.")
             return
