@@ -63,26 +63,26 @@ class EncryptionEnvironment:
         size =self.size.get_label()
         priority=self.priority.get_label()
 
-        w_sec = 0.4
-        w_eff = 0.6
+        w_sec = 0.5
+        w_eff = 0.5
+
+        battery_percent = self.battery.get_value()
+        w_eff += (100-battery_percent)/200
 
         # ------------
         # First Layer
         # ------------
         if network == "public" or threat == "high":
-            if battery == '0-10' or signal =='weak' or size == 'large' or priority == 'important':
-                w_sec = 0.7
-                w_eff = 0.3
-            else:
-                w_sec = 0.9
-                w_eff = 0.1
-        elif battery == "0-10" or signal == 'weak':
-            w_sec = 0.1
-            w_eff = 0.9
-        elif size == 'large' or priority == 'important':
-            w_sec = 0.4
-            w_eff = 0.6
+            w_sec += 0.3
+        if self.priority.get_label() == "important":
+            w_sec += 0.4
+            w_eff += 0.2
+        elif size == 'large' or signal == 'weak':
+            w_eff += 0.2
 
+        total = w_sec + w_eff
+        w_sec /= total
+        w_eff /= total
 
         res = specs[action]
         reward = (w_sec * res['S']) + (w_eff * res['E'])
@@ -97,12 +97,14 @@ class EncryptionEnvironment:
         processing_cost = cost[action] * size_map[self.size.get_label()]
         transmission_cost = overhead[action] * (size_map[self.size.get_label()] * 0.1)
 
-        total_cost = processing_cost * transmission_cost
+        total_cost = processing_cost + transmission_cost
 
         new_battery = max(0,self.battery.get_value() - total_cost)
-        self.battery.set_value(new_battery)
 
         reward = self._calculate_reward(action)
+
+        self.battery.set_value(new_battery)
+
         done = self.battery.get_value()<=0
         if done:
             reward -= 500
