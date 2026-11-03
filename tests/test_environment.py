@@ -66,6 +66,20 @@ class TestEnvironmentEquivalence(unittest.TestCase):
                 _, _, cor_tot = cor.calculate_cost(action)
                 self.assertAlmostEqual(expected_tot, cor_tot, places=6, msg=f"Cost mismatch on {action} for tc {tc}")
 
+    def test_benchmark_calibrated_mode(self):
+        """Verify that benchmark_calibrated mode correctly applies calibrated costs and overheads."""
+        env = core_env.EncryptionEnvironment(mode='benchmark_calibrated', size=1) # size=1 -> small
+        # For small payload (multiplier 1, overhead 1.500)
+        # AES-256: proc = 0.11 * 1 = 0.11, trans = 1.500 * 0.1 = 0.15 -> total = 0.26
+        # ChaCha20: proc = 0.10 * 1 = 0.10, trans = 1.500 * 0.1 = 0.15 -> total = 0.25
+        # ASCON: proc = 0.35 * 1 = 0.35, trans = 1.500 * 0.1 = 0.15 -> total = 0.50
+        p_aes, t_aes, tot_aes = env.calculate_cost('AES-256')
+        self.assertAlmostEqual(tot_aes, 0.26, places=4)
+        p_cha, t_cha, tot_cha = env.calculate_cost('ChaCha20')
+        self.assertAlmostEqual(tot_cha, 0.25, places=4)
+        p_asc, t_asc, tot_asc = env.calculate_cost('ASCON')
+        self.assertAlmostEqual(tot_asc, 0.50, places=4)
+
 
 if __name__ == '__main__':
     unittest.main()

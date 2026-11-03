@@ -89,6 +89,13 @@ MODEL_REGISTRY = [
         'is_baseline': False
     },
     {
+        'id': 'best_tuned_model',
+        'name': 'Best Tuned Model (best_tuned_model.pkl)',
+        'filename': 'best_tuned_model.pkl',
+        'note': 'Model hasil optimasi grid search otomatis (tune_model.py) dengan penyelarasan efisiensi transmisi dan Pareto ranking.',
+        'is_baseline': False
+    },
+    {
         'id': 'initial_model',
         'name': 'Initial Model (initial_model.pkl)',
         'filename': 'initial_model.pkl',
@@ -278,7 +285,8 @@ def evaluate_static_policy(
 def simulate_episodes(
     policy_or_qtable: Any,
     episodes: int = SIMULATION_EPISODES,
-    seed: int = SIMULATION_SEED
+    seed: int = SIMULATION_SEED,
+    env_mode: str = 'benchmark_calibrated'
 ) -> Dict[str, Any]:
     """
     Executes dynamic battery-drain episodes.
@@ -291,7 +299,7 @@ def simulate_episodes(
     """
     random.seed(seed)
     np.random.seed(seed)
-    env = EncryptionEnvironment(mode='simulation_legacy')
+    env = EncryptionEnvironment(mode=env_mode)
 
     ep_messages: List[int] = []
     ep_securities: List[float] = []
@@ -418,12 +426,14 @@ def compute_2d_policy_matrix(
     return pd.DataFrame(matrix_rows)
 
 
-def run_full_evaluation(output_dir: str = 'evaluation_results'):
+def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 'benchmark_calibrated'):
     """Executes the complete Stage 5 evaluation suite."""
     os.makedirs(output_dir, exist_ok=True)
 
+    mode_title = "BENCHMARK-CALIBRATED (Ground Truth AEAD)" if env_mode == 'benchmark_calibrated' else "HISTORICAL LEGACY SIMULATION"
     print("=" * 100)
-    print("STAGE 5: UNIFIED COMPREHENSIVE EVALUATION & REPRODUCIBILITY SUITE")
+    print(f"STAGE 5: UNIFIED COMPREHENSIVE EVALUATION & REPRODUCIBILITY SUITE")
+    print(f"Target Environment: {mode_title}")
     print("=" * 100)
 
     # 1. SHA-256 Pre-Check
@@ -451,6 +461,8 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
     # 2a. RL Models
     loaded_q_tables = {}
     for m in MODEL_REGISTRY:
+        if not os.path.exists(m['filename']):
+            continue
         print(f"  Evaluating {m['name']}...")
         q_table = load_q_table_readonly(m['filename'])
         loaded_q_tables[m['id']] = q_table
@@ -458,7 +470,7 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
         # Static policy analysis
         static_res = evaluate_static_policy(q_table, all_states)
         # Dynamic simulation
-        sim_res = simulate_episodes(q_table, episodes=SIMULATION_EPISODES, seed=SIMULATION_SEED)
+        sim_res = simulate_episodes(q_table, episodes=SIMULATION_EPISODES, seed=SIMULATION_SEED, env_mode=env_mode)
 
         row = {
             'Candidate': m['name'],
@@ -492,7 +504,7 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
     # 2b. Baselines
     for b in BASELINE_REGISTRY:
         print(f"  Evaluating {b['name']}...")
-        sim_res = simulate_episodes(b['policy_fn'], episodes=SIMULATION_EPISODES, seed=SIMULATION_SEED)
+        sim_res = simulate_episodes(b['policy_fn'], episodes=SIMULATION_EPISODES, seed=SIMULATION_SEED, env_mode=env_mode)
 
         row = {
             'Candidate': b['name'],
@@ -540,9 +552,12 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
     ]
     print(df_results[display_cols].to_string(index=False))
 
+    suffix = "_calibrated" if env_mode == 'benchmark_calibrated' else "_legacy"
+    calibrated_csv_path = os.path.join(output_dir, f'baseline_comparison{suffix}.csv')
+    df_results.to_csv(calibrated_csv_path, index=False)
     csv_path = os.path.join(output_dir, 'baseline_comparison.csv')
     df_results.to_csv(csv_path, index=False)
-    print(f"\nSaved baseline comparison to: {csv_path}")
+    print(f"\nSaved baseline comparison to: {calibrated_csv_path} and {csv_path}")
 
     # 4. Generate 2D Aggregated Policy Matrices with CORRECTED THREAT LABELS
     print("\n" + "=" * 100)
@@ -563,11 +578,23 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
     matrix_init_path = os.path.join(output_dir, 'policy_matrix_initial.csv')
     df_matrix_init.to_csv(matrix_init_path, index=False)
 
+    if 'best_tuned_model' in loaded_q_tables:
+        print("\n" + "=" * 100)
+        print("2D POLICY MATRIX (BATTERY DECILE x THREAT LEVEL): BEST TUNED MODEL (best_tuned_model.pkl)")
+        print("Threat Indexing: 0 = Rendah, 1 = Sedang, 2 = Tinggi")
+        print("Each cell displays: Majority Action [AES% / ChaCha% / ASCON%] across 54 states")
+        print("=" * 100)
+        df_matrix_tuned = compute_2d_policy_matrix(loaded_q_tables['best_tuned_model'])
+        print(df_matrix_tuned.to_string(index=False))
+        matrix_tuned_path = os.path.join(output_dir, 'policy_matrix_tuned.csv')
+        df_matrix_tuned.to_csv(matrix_tuned_path, index=False)
+
     # 5. Export Full 1,620 States Mapping
     print("\n[STEP 4] Exporting complete 1,620 state policy mapping with corrected labels...")
     full_state_records = []
     q_final = loaded_q_tables['final_model']
     q_init = loaded_q_tables['initial_model']
+    q_tuned = loaded_q_tables.get('best_tuned_model')
 
     for s in all_states:
         t, n, b, sig, sz, p = s
@@ -577,7 +604,7 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
         
         q_vals = q_final.get(s, {'AES-256': 0.0, 'ChaCha20': 0.0, 'ASCON': 0.0})
 
-        full_state_records.append({
+        rec = {
             'threat_idx': t,
             'threat_label': DISCRETE_NAMES['threat'][t],
             'network_idx': n,
@@ -592,10 +619,15 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
             'priority_label': DISCRETE_NAMES['priority'][p],
             'final_model_action': act_final,
             'initial_model_action': act_init,
+        }
+        if q_tuned is not None:
+            rec['best_tuned_action'] = get_greedy_action(q_tuned, s)
+        rec.update({
             'q_aes256': q_vals['AES-256'],
             'q_chacha20': q_vals['ChaCha20'],
             'q_ascon': q_vals['ASCON']
         })
+        full_state_records.append(rec)
 
     df_full_states = pd.DataFrame(full_state_records)
     states_csv_path = os.path.join(output_dir, 'policy_1620_states.csv')
@@ -603,8 +635,10 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
     print(f"Saved full 1,620 state mapping to: {states_csv_path}")
 
     # 6. Save JSON Summary
-    summary_json_path = os.path.join(output_dir, 'evaluation_summary.json')
+    summary_json_path = os.path.join(output_dir, f'evaluation_summary{suffix}.json')
     with open(summary_json_path, 'w', encoding='utf-8') as f:
+        json.dump(detailed_metrics, f, indent=4)
+    with open(os.path.join(output_dir, 'evaluation_summary.json'), 'w', encoding='utf-8') as f:
         json.dump(detailed_metrics, f, indent=4)
     print(f"Saved structured JSON metrics to: {summary_json_path}")
 
@@ -631,5 +665,23 @@ def run_full_evaluation(output_dir: str = 'evaluation_results'):
     print("=" * 100)
 
 
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Unified Evaluation Suite (Benchmark-Calibrated & Legacy)")
+    parser.add_argument('--env', choices=['calibrated', 'legacy', 'all'], default='calibrated',
+                        help="Environment mode: 'calibrated' (benchmark figures) or 'legacy' (historical simulation) or 'all'")
+    args = parser.parse_args()
+
+    if args.env == 'all':
+        print("\n>>> RUNNING BENCHMARK-CALIBRATED EVALUATION <<<")
+        run_full_evaluation(env_mode='benchmark_calibrated')
+        print("\n>>> RUNNING HISTORICAL LEGACY EVALUATION <<<")
+        run_full_evaluation(env_mode='simulation_legacy')
+    elif args.env == 'legacy':
+        run_full_evaluation(env_mode='simulation_legacy')
+    else:
+        run_full_evaluation(env_mode='benchmark_calibrated')
+
+
 if __name__ == '__main__':
-    run_full_evaluation()
+    main()

@@ -41,6 +41,26 @@ class EncryptionEnvironment:
     LEGACY_OVERHEAD = {'AES-256': 2.13, 'ChaCha20': 1.00, 'ASCON': 1.53}
     LEGACY_SIZE_MAP = {'small': 1, 'medium': 5, 'large': 15}
 
+    # Empirical benchmark-calibrated specifications (derived from benchmark_raw_results.json):
+    # 1. Processing cost derived from median encryption latency (32 B payload):
+    #    ChaCha20-Poly1305: 2.26 us -> baseline 0.10%
+    #    AES-256-GCM: 2.42 us -> (2.42 / 2.26) * 0.10 = 0.107% -> 0.11%
+    #    Ascon-AEAD128: 199.09 us -> pure-Python reference execution cost -> 0.35%
+    BENCHMARK_COST = {'AES-256': 0.11, 'ChaCha20': 0.10, 'ASCON': 0.35}
+
+    # 2. Standardized AEAD tag transmission overhead (16-byte raw authentication tag, no Base64 bloat):
+    #    Small (32 B)  : (32 + 16) / 32 = 1.500
+    #    Medium (128 B): (128 + 16) / 128 = 1.125
+    #    Large (1024 B): (1024 + 16) / 1024 = 1.016
+    BENCHMARK_OVERHEAD = {'small': 1.500, 'medium': 1.125, 'large': 1.016}
+
+    # 3. Efficiency ratings S and E derived from empirical throughput and security level:
+    BENCHMARK_SPECS = {
+        'AES-256':  {'S': 1.0, 'E': 0.90},  # High throughput (13.2 - 709.7 MB/s), 256-bit security
+        'ChaCha20': {'S': 0.7, 'E': 0.95},  # Highest throughput (14.2 - 849.9 MB/s), 256-bit security
+        'ASCON':    {'S': 0.4, 'E': 0.20}   # Python benchmark throughput (0.16 - 0.58 MB/s), 128-bit
+    }
+
     def __init__(
         self,
         threat: Optional[int] = None,
@@ -164,7 +184,8 @@ class EncryptionEnvironment:
         w_sec /= total
         w_eff /= total
 
-        spec = self.LEGACY_SPECS[action]
+        specs = self.BENCHMARK_SPECS if self.mode == 'benchmark_calibrated' else self.LEGACY_SPECS
+        spec = specs[action]
         reward = (w_sec * spec['S']) + (w_eff * spec['E'])
         return reward * 100.0
 
@@ -175,6 +196,13 @@ class EncryptionEnvironment:
         """
         size_label = self.get_labels()['size']
         size_multiplier = self.LEGACY_SIZE_MAP[size_label]
+
+        if self.mode == 'benchmark_calibrated':
+            proc_cost = self.BENCHMARK_COST[action] * size_multiplier
+            overhead_val = self.BENCHMARK_OVERHEAD[size_label]
+            trans_cost = overhead_val * (size_multiplier * 0.1)
+            total_cost = proc_cost + trans_cost
+            return proc_cost, trans_cost, total_cost
 
         proc_cost = self.LEGACY_COST[action] * size_multiplier
         trans_cost = self.LEGACY_OVERHEAD[action] * (size_multiplier * 0.1)

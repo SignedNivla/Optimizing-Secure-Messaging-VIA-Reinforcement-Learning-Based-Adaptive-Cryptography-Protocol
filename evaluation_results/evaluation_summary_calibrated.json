@@ -1,0 +1,429 @@
+{
+    "final_model": {
+        "metadata": {
+            "id": "final_model",
+            "name": "Final Model (final_model.pkl)",
+            "filename": "final_model.pkl",
+            "note": "Naskah mengklaim alpha=0.14, gamma=0.56. Pemanggilan posisional aktual di train.py: alpha=0.14, epsilon=0.56, gamma=0.99.",
+            "is_baseline": false
+        },
+        "static": {
+            "total_states": 1620,
+            "visited_states": 1618,
+            "coverage_pct": 99.87654320987654,
+            "counts_1620": {
+                "AES-256": 360,
+                "ChaCha20": 499,
+                "ASCON": 761
+            },
+            "pcts_1620": {
+                "AES-256": 22.22222222222222,
+                "ChaCha20": 30.80246913580247,
+                "ASCON": 46.97530864197531
+            },
+            "wsm_1620": 0.6257407407407408,
+            "counts_visited": {
+                "AES-256": 358,
+                "ChaCha20": 499,
+                "ASCON": 761
+            },
+            "pcts_visited": {
+                "AES-256": 22.126081582200246,
+                "ChaCha20": 30.84054388133498,
+                "ASCON": 47.03337453646477
+            },
+            "wsm_visited": 0.6252781211372065
+        },
+        "dynamic": {
+            "messages_mean": 67.746,
+            "messages_std": 4.611885080962014,
+            "security_mean": 38.034599999999976,
+            "security_std": 3.7215780040192685,
+            "reward_mean": 3187.2209696720206,
+            "reward_std": 431.85040428924157,
+            "setor_mean": 0.3803459999999998,
+            "setor_std": 0.037215780040192686,
+            "setor_macro": 0.38034599999999974,
+            "action_pcts": {
+                "AES-256": 9.181353880671923,
+                "ChaCha20": 35.44711126856198,
+                "ASCON": 55.3715348507661
+            }
+        }
+    },
+    "best_tuned_model": {
+        "metadata": {
+            "id": "best_tuned_model",
+            "name": "Best Tuned Model (best_tuned_model.pkl)",
+            "filename": "best_tuned_model.pkl",
+            "note": "Model hasil optimasi grid search otomatis (tune_model.py) dengan penyelarasan efisiensi transmisi dan Pareto ranking.",
+            "is_baseline": false
+        },
+        "static": {
+            "total_states": 1620,
+            "visited_states": 1565,
+            "coverage_pct": 96.60493827160494,
+            "counts_1620": {
+                "AES-256": 900,
+                "ChaCha20": 565,
+                "ASCON": 155
+            },
+            "pcts_1620": {
+                "AES-256": 55.55555555555556,
+                "ChaCha20": 34.876543209876544,
+                "ASCON": 9.5679012345679
+            },
+            "wsm_1620": 0.8379629629629629,
+            "counts_visited": {
+                "AES-256": 845,
+                "ChaCha20": 565,
+                "ASCON": 155
+            },
+            "pcts_visited": {
+                "AES-256": 53.99361022364217,
+                "ChaCha20": 36.102236421725244,
+                "ASCON": 9.904153354632587
+            },
+            "wsm_visited": 0.8322683706070287
+        },
+        "dynamic": {
+            "messages_mean": 106.76,
+            "messages_std": 4.575412549705217,
+            "security_mean": 90.12980000000009,
+            "security_std": 4.342908237575373,
+            "reward_mean": 8909.831095708258,
+            "reward_std": 428.3464734431734,
+            "setor_mean": 0.9012980000000009,
+            "setor_std": 0.04342908237575373,
+            "setor_macro": 0.9012980000000009,
+            "action_pcts": {
+                "AES-256": 50.15923566878981,
+                "ChaCha20": 47.75758711127763,
+                "ASCON": 2.083177219932559
+            }
+        }
+    },
+    "initial_model": {
+        "metadata": {
+            "id": "initial_model",
+            "name": "Initial Model (initial_model.pkl)",
+            "filename": "initial_model.pkl",
+            "note": "Model awal tanpa retuning (default legacy constructor: alpha=0.1, epsilon=0.9, gamma=0.5).",
+            "is_baseline": false
+        },
+        "static": {
+            "total_states": 1620,
+            "visited_states": 1602,
+            "coverage_pct": 98.88888888888889,
+            "counts_1620": {
+                "AES-256": 521,
+                "ChaCha20": 334,
+                "ASCON": 765
+            },
+            "pcts_1620": {
+                "AES-256": 32.160493827160494,
+                "ChaCha20": 20.617283950617285,
+                "ASCON": 47.22222222222222
+            },
+            "wsm_1620": 0.6548148148148147,
+            "counts_visited": {
+                "AES-256": 503,
+                "ChaCha20": 334,
+                "ASCON": 765
+            },
+            "pcts_visited": {
+                "AES-256": 31.39825218476904,
+                "ChaCha20": 20.848938826466917,
+                "ASCON": 47.752808988764045
+            },
+            "wsm_visited": 0.650936329588015
+        },
+        "dynamic": {
+            "messages_mean": 61.818,
+            "messages_std": 4.089605848978604,
+            "security_mean": 34.199999999999974,
+            "security_std": 3.51135301557676,
+            "reward_mean": 2546.5522893547536,
+            "reward_std": 368.42550731398757,
+            "setor_mean": 0.34199999999999964,
+            "setor_std": 0.0351135301557676,
+            "setor_macro": 0.3419999999999997,
+            "action_pcts": {
+                "AES-256": 17.88475848458378,
+                "ChaCha20": 15.30945679251998,
+                "ASCON": 66.80578472289625
+            }
+        }
+    },
+    "model_2": {
+        "metadata": {
+            "id": "model_2",
+            "name": "Model 2 (agent_brain2.pkl)",
+            "filename": "agent_brain2.pkl",
+            "note": "Eksperimen historis 2 (posisional: alpha=0.7, epsilon=0.001, gamma=0.5).",
+            "is_baseline": false
+        },
+        "static": {
+            "total_states": 1620,
+            "visited_states": 1620,
+            "coverage_pct": 100.0,
+            "counts_1620": {
+                "AES-256": 433,
+                "ChaCha20": 399,
+                "ASCON": 788
+            },
+            "pcts_1620": {
+                "AES-256": 26.728395061728392,
+                "ChaCha20": 24.62962962962963,
+                "ASCON": 48.641975308641975
+            },
+            "wsm_1620": 0.6342592592592593,
+            "counts_visited": {
+                "AES-256": 433,
+                "ChaCha20": 399,
+                "ASCON": 788
+            },
+            "pcts_visited": {
+                "AES-256": 26.728395061728392,
+                "ChaCha20": 24.62962962962963,
+                "ASCON": 48.641975308641975
+            },
+            "wsm_visited": 0.6342592592592593
+        },
+        "dynamic": {
+            "messages_mean": 66.118,
+            "messages_std": 4.509110333535874,
+            "security_mean": 38.38419999999999,
+            "security_std": 3.850414310174951,
+            "reward_mean": 3093.0225907929184,
+            "reward_std": 420.00051091469874,
+            "setor_mean": 0.38384199999999985,
+            "setor_std": 0.038504143101749516,
+            "setor_macro": 0.38384199999999985,
+            "action_pcts": {
+                "AES-256": 17.946701352128013,
+                "ChaCha20": 24.286881030884178,
+                "ASCON": 57.76641761698781
+            }
+        }
+    },
+    "model_3": {
+        "metadata": {
+            "id": "model_3",
+            "name": "Model 3 (agent_brain3.pkl)",
+            "filename": "agent_brain3.pkl",
+            "note": "Eksperimen historis 3 (posisional: alpha=0.2, epsilon=0.8, gamma=0.8).",
+            "is_baseline": false
+        },
+        "static": {
+            "total_states": 1620,
+            "visited_states": 1613,
+            "coverage_pct": 99.5679012345679,
+            "counts_1620": {
+                "AES-256": 342,
+                "ChaCha20": 207,
+                "ASCON": 1071
+            },
+            "pcts_1620": {
+                "AES-256": 21.11111111111111,
+                "ChaCha20": 12.777777777777777,
+                "ASCON": 66.11111111111111
+            },
+            "wsm_1620": 0.565,
+            "counts_visited": {
+                "AES-256": 335,
+                "ChaCha20": 207,
+                "ASCON": 1071
+            },
+            "pcts_visited": {
+                "AES-256": 20.768753874767516,
+                "ChaCha20": 12.833230006199628,
+                "ASCON": 66.39801611903286
+            },
+            "wsm_visited": 0.563112213267204
+        },
+        "dynamic": {
+            "messages_mean": 56.668,
+            "messages_std": 3.4481554489320807,
+            "security_mean": 27.66819999999997,
+            "security_std": 2.619253473797441,
+            "reward_mean": 1773.8681729411655,
+            "reward_std": 265.9558179695592,
+            "setor_mean": 0.27668199999999965,
+            "setor_std": 0.026192534737974407,
+            "setor_macro": 0.2766819999999997,
+            "action_pcts": {
+                "AES-256": 12.063245570692455,
+                "ChaCha20": 5.290463753794029,
+                "ASCON": 82.64629067551351
+            }
+        }
+    },
+    "model_4": {
+        "metadata": {
+            "id": "model_4",
+            "name": "Model 4 (agent_brain4.pkl)",
+            "filename": "agent_brain4.pkl",
+            "note": "Eksperimen historis 4 (posisional: alpha=0.12, epsilon=0.8, gamma=0.99).",
+            "is_baseline": false
+        },
+        "static": {
+            "total_states": 1620,
+            "visited_states": 1604,
+            "coverage_pct": 99.01234567901234,
+            "counts_1620": {
+                "AES-256": 371,
+                "ChaCha20": 509,
+                "ASCON": 740
+            },
+            "pcts_1620": {
+                "AES-256": 22.901234567901234,
+                "ChaCha20": 31.419753086419753,
+                "ASCON": 45.67901234567901
+            },
+            "wsm_1620": 0.6316666666666666,
+            "counts_visited": {
+                "AES-256": 355,
+                "ChaCha20": 509,
+                "ASCON": 740
+            },
+            "pcts_visited": {
+                "AES-256": 22.13216957605985,
+                "ChaCha20": 31.733167082294266,
+                "ASCON": 46.13466334164589
+            },
+            "wsm_visited": 0.6279925187032419
+        },
+        "dynamic": {
+            "messages_mean": 66.43,
+            "messages_std": 4.638652821671395,
+            "security_mean": 38.12019999999997,
+            "security_std": 4.04508738595349,
+            "reward_mean": 3110.473672178763,
+            "reward_std": 450.6133177204481,
+            "setor_mean": 0.3812019999999997,
+            "setor_std": 0.0404508738595349,
+            "setor_macro": 0.38120199999999965,
+            "action_pcts": {
+                "AES-256": 14.37001354809574,
+                "ChaCha20": 29.206683727231674,
+                "ASCON": 56.42330272467259
+            }
+        }
+    },
+    "baseline_aes": {
+        "metadata": {
+            "id": "baseline_aes",
+            "name": "Baseline 1: Static AES-256",
+            "wsm": 1.0
+        },
+        "dynamic": {
+            "messages_mean": 105.718,
+            "messages_std": 4.176419040278406,
+            "security_mean": 105.718,
+            "security_std": 4.176419040278406,
+            "reward_mean": 9510.982717917928,
+            "reward_std": 395.43737544598247,
+            "setor_mean": 1.05718,
+            "setor_std": 0.04176419040278407,
+            "setor_macro": 1.05718,
+            "action_pcts": {
+                "AES-256": 100.0,
+                "ChaCha20": 0.0,
+                "ASCON": 0.0
+            }
+        }
+    },
+    "baseline_chacha": {
+        "metadata": {
+            "id": "baseline_chacha",
+            "name": "Baseline 2: Static ChaCha20",
+            "wsm": 0.7
+        },
+        "dynamic": {
+            "messages_mean": 110.596,
+            "messages_std": 4.344281758818136,
+            "security_mean": 77.41720000000015,
+            "security_std": 3.0409972311727076,
+            "reward_mean": 8708.226344819464,
+            "reward_std": 361.9371126151879,
+            "setor_mean": 0.7741720000000016,
+            "setor_std": 0.03040997231172708,
+            "setor_macro": 0.7741720000000015,
+            "action_pcts": {
+                "AES-256": 0.0,
+                "ChaCha20": 100.0,
+                "ASCON": 0.0
+            }
+        }
+    },
+    "baseline_ascon": {
+        "metadata": {
+            "id": "baseline_ascon",
+            "name": "Baseline 3: Static ASCON",
+            "wsm": 0.4
+        },
+        "dynamic": {
+            "messages_mean": 51.302,
+            "messages_std": 3.0428269750348935,
+            "security_mean": 20.52079999999999,
+            "security_std": 1.217130790013953,
+            "reward_mean": 1008.5888212965041,
+            "reward_std": 90.01049685749948,
+            "setor_mean": 0.20520799999999992,
+            "setor_std": 0.01217130790013953,
+            "setor_macro": 0.20520799999999992,
+            "action_pcts": {
+                "AES-256": 0.0,
+                "ChaCha20": 0.0,
+                "ASCON": 100.0
+            }
+        }
+    },
+    "baseline_heuristic": {
+        "metadata": {
+            "id": "baseline_heuristic",
+            "name": "Baseline 4: Threshold Heuristic",
+            "wsm": 0.76
+        },
+        "dynamic": {
+            "messages_mean": 97.172,
+            "messages_std": 4.134539393934952,
+            "security_mean": 77.65520000000019,
+            "security_std": 3.3974038558876156,
+            "reward_mean": 7537.0198446124095,
+            "reward_std": 351.26383533642576,
+            "setor_mean": 0.7765520000000018,
+            "setor_std": 0.03397403855887616,
+            "setor_macro": 0.7765520000000019,
+            "action_pcts": {
+                "AES-256": 43.90153542172642,
+                "ChaCha20": 45.24760218993126,
+                "ASCON": 10.850862388342321
+            }
+        }
+    },
+    "baseline_random": {
+        "metadata": {
+            "id": "baseline_random",
+            "name": "Baseline 5: Uniform Random",
+            "wsm": 0.7000000000000001
+        },
+        "dynamic": {
+            "messages_mean": 79.528,
+            "messages_std": 4.803042369165611,
+            "security_mean": 55.954,
+            "security_std": 4.799979583289919,
+            "reward_mean": 5029.472146093169,
+            "reward_std": 512.3447046472887,
+            "setor_mean": 0.5595399999999999,
+            "setor_std": 0.04799979583289919,
+            "setor_macro": 0.55954,
+            "action_pcts": {
+                "AES-256": 33.85474298360326,
+                "ChaCha20": 33.482547027462026,
+                "ASCON": 32.662709988934715
+            }
+        }
+    }
+}
