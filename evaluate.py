@@ -82,23 +82,34 @@ DISCRETE_NAMES = {
 # not embedded in the model names.
 MODEL_REGISTRY = [
     {
-        'id': 'final_model',
-        'name': 'Final Model (final_model.pkl)',
-        'filename': 'final_model.pkl',
-        'note': 'Naskah mengklaim alpha=0.14, gamma=0.56. Pemanggilan posisional aktual di train.py: alpha=0.14, epsilon=0.56, gamma=0.99.',
+        'id': 'best_smartphone_model',
+        'name': 'Best Smartphone Model (best_smartphone_model.pkl)',
+        'filename': 'best_smartphone_model.pkl',
+        'alt_filename': os.path.join('phone_calibration', 'best_smartphone_model.pkl'),
+        'note': 'Model hasil optimasi grid search khusus profil smartphone (software AES 2.2x, ChaCha20, Ascon-AEAD128).',
         'is_baseline': False
     },
     {
         'id': 'best_tuned_model',
-        'name': 'Best Tuned Model (best_tuned_model.pkl)',
+        'name': 'Best Tuned Model PC (best_tuned_model.pkl)',
         'filename': 'best_tuned_model.pkl',
-        'note': 'Model hasil optimasi grid search otomatis (tune_model.py) dengan penyelarasan efisiensi transmisi dan Pareto ranking.',
+        'alt_filename': os.path.join('tuning_results', 'best_tuned_model.pkl'),
+        'note': 'Model hasil optimasi grid search terkalibrasi PC benchmark.',
+        'is_baseline': False
+    },
+    {
+        'id': 'final_model',
+        'name': 'Final Model (final_model.pkl)',
+        'filename': 'final_model.pkl',
+        'alt_filename': 'final_model.pkl',
+        'note': 'Naskah mengklaim alpha=0.14, gamma=0.56. Pemanggilan posisional aktual di train.py: alpha=0.14, epsilon=0.56, gamma=0.99.',
         'is_baseline': False
     },
     {
         'id': 'initial_model',
         'name': 'Initial Model (initial_model.pkl)',
         'filename': 'initial_model.pkl',
+        'alt_filename': 'initial_model.pkl',
         'note': 'Model awal tanpa retuning (default legacy constructor: alpha=0.1, epsilon=0.9, gamma=0.5).',
         'is_baseline': False
     },
@@ -106,6 +117,7 @@ MODEL_REGISTRY = [
         'id': 'model_2',
         'name': 'Model 2 (agent_brain2.pkl)',
         'filename': 'agent_brain2.pkl',
+        'alt_filename': 'agent_brain2.pkl',
         'note': 'Eksperimen historis 2 (posisional: alpha=0.7, epsilon=0.001, gamma=0.5).',
         'is_baseline': False
     },
@@ -113,6 +125,7 @@ MODEL_REGISTRY = [
         'id': 'model_3',
         'name': 'Model 3 (agent_brain3.pkl)',
         'filename': 'agent_brain3.pkl',
+        'alt_filename': 'agent_brain3.pkl',
         'note': 'Eksperimen historis 3 (posisional: alpha=0.2, epsilon=0.8, gamma=0.8).',
         'is_baseline': False
     },
@@ -120,6 +133,7 @@ MODEL_REGISTRY = [
         'id': 'model_4',
         'name': 'Model 4 (agent_brain4.pkl)',
         'filename': 'agent_brain4.pkl',
+        'alt_filename': 'agent_brain4.pkl',
         'note': 'Eksperimen historis 4 (posisional: alpha=0.12, epsilon=0.8, gamma=0.99).',
         'is_baseline': False
     }
@@ -138,17 +152,21 @@ def compute_file_sha256(filepath: str) -> str:
 def check_all_model_hashes() -> Dict[str, str]:
     """Computes SHA-256 hashes for all .pkl files in the workspace."""
     hashes = {}
-    for pkl_file in sorted(glob.glob('*.pkl')):
-        hashes[pkl_file] = compute_file_sha256(pkl_file)
+    legacy_files = ['final_model.pkl', 'initial_model.pkl', 'agent_brain2.pkl', 'agent_brain3.pkl', 'agent_brain4.pkl']
+    for pkl_file in legacy_files:
+        if os.path.exists(pkl_file):
+            hashes[pkl_file] = compute_file_sha256(pkl_file)
     return hashes
 
 
-def load_q_table_readonly(filepath: str) -> Dict[Tuple[int, ...], Dict[str, float]]:
+def load_q_table_readonly(filepath: str, alt_filepath: Optional[str] = None) -> Dict[Tuple[int, ...], Dict[str, float]]:
     """Loads Q-table from a pickle file without modifying anything."""
     import pickle
-    with open(filepath, 'rb') as f:
+    target = filepath
+    if not os.path.exists(target) and alt_filepath and os.path.exists(alt_filepath):
+        target = alt_filepath
+    with open(target, 'rb') as f:
         data = pickle.load(f)
-    # Return deepcopy to ensure zero in-memory contamination
     return copy.deepcopy(data)
 
 
@@ -203,19 +221,19 @@ def policy_random_choice(battery: float, state: Tuple[int, ...]) -> str:
 BASELINE_REGISTRY = [
     {
         'id': 'baseline_aes',
-        'name': 'Baseline 1: Static AES-256',
+        'name': 'Baseline 1: Static AES-256-GCM',
         'policy_fn': policy_static_aes,
         'wsm': 1.0000
     },
     {
         'id': 'baseline_chacha',
-        'name': 'Baseline 2: Static ChaCha20',
+        'name': 'Baseline 2: Static ChaCha20-Poly1305',
         'policy_fn': policy_static_chacha,
         'wsm': 0.7000
     },
     {
         'id': 'baseline_ascon',
-        'name': 'Baseline 3: Static ASCON',
+        'name': 'Baseline 3: Static Ascon-AEAD128',
         'policy_fn': policy_static_ascon,
         'wsm': 0.4000
     },
@@ -286,7 +304,8 @@ def simulate_episodes(
     policy_or_qtable: Any,
     episodes: int = SIMULATION_EPISODES,
     seed: int = SIMULATION_SEED,
-    env_mode: str = 'benchmark_calibrated'
+    env_mode: str = 'smartphone',
+    energy_scale: float = 1.0
 ) -> Dict[str, Any]:
     """
     Executes dynamic battery-drain episodes.
@@ -299,7 +318,7 @@ def simulate_episodes(
     """
     random.seed(seed)
     np.random.seed(seed)
-    env = EncryptionEnvironment(mode=env_mode)
+    env = EncryptionEnvironment(mode=env_mode, energy_scale=energy_scale)
 
     ep_messages: List[int] = []
     ep_securities: List[float] = []
@@ -461,10 +480,13 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
     # 2a. RL Models
     loaded_q_tables = {}
     for m in MODEL_REGISTRY:
-        if not os.path.exists(m['filename']):
+        target_fn = m['filename']
+        if not os.path.exists(target_fn) and m.get('alt_filename') and os.path.exists(m['alt_filename']):
+            target_fn = m['alt_filename']
+        if not os.path.exists(target_fn):
             continue
         print(f"  Evaluating {m['name']}...")
-        q_table = load_q_table_readonly(m['filename'])
+        q_table = load_q_table_readonly(target_fn)
         loaded_q_tables[m['id']] = q_table
 
         # Static policy analysis
@@ -552,7 +574,7 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
     ]
     print(df_results[display_cols].to_string(index=False))
 
-    suffix = "_calibrated" if env_mode == 'benchmark_calibrated' else "_legacy"
+    suffix = f"_{env_mode}" if env_mode != 'simulation_legacy' else "_legacy"
     calibrated_csv_path = os.path.join(output_dir, f'baseline_comparison{suffix}.csv')
     df_results.to_csv(calibrated_csv_path, index=False)
     csv_path = os.path.join(output_dir, 'baseline_comparison.csv')
@@ -580,7 +602,7 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
 
     if 'best_tuned_model' in loaded_q_tables:
         print("\n" + "=" * 100)
-        print("2D POLICY MATRIX (BATTERY DECILE x THREAT LEVEL): BEST TUNED MODEL (best_tuned_model.pkl)")
+        print("2D POLICY MATRIX (BATTERY DECILE x THREAT LEVEL): BEST TUNED MODEL PC (best_tuned_model.pkl)")
         print("Threat Indexing: 0 = Rendah, 1 = Sedang, 2 = Tinggi")
         print("Each cell displays: Majority Action [AES% / ChaCha% / ASCON%] across 54 states")
         print("=" * 100)
@@ -589,12 +611,24 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
         matrix_tuned_path = os.path.join(output_dir, 'policy_matrix_tuned.csv')
         df_matrix_tuned.to_csv(matrix_tuned_path, index=False)
 
+    if 'best_smartphone_model' in loaded_q_tables:
+        print("\n" + "=" * 100)
+        print("2D POLICY MATRIX (BATTERY DECILE x THREAT LEVEL): BEST SMARTPHONE MODEL (best_smartphone_model.pkl)")
+        print("Threat Indexing: 0 = Rendah, 1 = Sedang, 2 = Tinggi")
+        print("Each cell displays: Majority Action [AES% / ChaCha% / ASCON%] across 54 states")
+        print("=" * 100)
+        df_matrix_phone = compute_2d_policy_matrix(loaded_q_tables['best_smartphone_model'])
+        print(df_matrix_phone.to_string(index=False))
+        matrix_phone_path = os.path.join(output_dir, 'policy_matrix_smartphone.csv')
+        df_matrix_phone.to_csv(matrix_phone_path, index=False)
+
     # 5. Export Full 1,620 States Mapping
     print("\n[STEP 4] Exporting complete 1,620 state policy mapping with corrected labels...")
     full_state_records = []
     q_final = loaded_q_tables['final_model']
     q_init = loaded_q_tables['initial_model']
     q_tuned = loaded_q_tables.get('best_tuned_model')
+    q_phone = loaded_q_tables.get('best_smartphone_model')
 
     for s in all_states:
         t, n, b, sig, sz, p = s
@@ -622,6 +656,8 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
         }
         if q_tuned is not None:
             rec['best_tuned_action'] = get_greedy_action(q_tuned, s)
+        if q_phone is not None:
+            rec['best_smartphone_action'] = get_greedy_action(q_phone, s)
         rec.update({
             'q_aes256': q_vals['AES-256'],
             'q_chacha20': q_vals['ChaCha20'],
@@ -635,6 +671,7 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
     print(f"Saved full 1,620 state mapping to: {states_csv_path}")
 
     # 6. Save JSON Summary
+    suffix = f"_{env_mode}" if env_mode != 'simulation_legacy' else "_legacy"
     summary_json_path = os.path.join(output_dir, f'evaluation_summary{suffix}.json')
     with open(summary_json_path, 'w', encoding='utf-8') as f:
         json.dump(detailed_metrics, f, indent=4)
@@ -665,22 +702,92 @@ def run_full_evaluation(output_dir: str = 'evaluation_results', env_mode: str = 
     print("=" * 100)
 
 
+def run_sensitivity_analysis(output_dir: str = 'phone_calibration', env_mode: str = 'smartphone'):
+    """
+    Evaluates sensitivity of candidates across energy scaling variations (+/- 20%):
+    - Low Cost (-20%, k=0.8)
+    - Nominal (k=1.0)
+    - High Cost (+20%, k=1.2)
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    scenarios = [
+        ('Low Cost (-20%)', 0.8),
+        ('Nominal (Baseline)', 1.0),
+        ('High Cost (+20%)', 1.2)
+    ]
+
+    # Load available models
+    loaded_models = []
+    for m in MODEL_REGISTRY:
+        target_fn = m['filename']
+        if not os.path.exists(target_fn) and m.get('alt_filename') and os.path.exists(m['alt_filename']):
+            target_fn = m['alt_filename']
+        if os.path.exists(target_fn):
+            loaded_models.append((m['name'], 'RL Model', load_q_table_readonly(target_fn)))
+
+    for b in BASELINE_REGISTRY:
+        loaded_models.append((b['name'], 'Baseline', b['policy_fn']))
+
+    records = []
+    print("\n" + "=" * 100)
+    print("RUNNING ENERGY SENSITIVITY ANALYSIS (+/- 20% PARAMETER VARIATION)")
+    print("=" * 100)
+
+    for scen_name, k_scale in scenarios:
+        print(f"\n>>> Scenario: {scen_name} (Scale Factor k={k_scale}) <<<")
+        for name, m_type, policy in loaded_models:
+            res = simulate_episodes(policy, episodes=200, seed=SIMULATION_SEED, env_mode=env_mode, energy_scale=k_scale)
+            records.append({
+                'Scenario': scen_name,
+                'Energy Scale (k)': k_scale,
+                'Candidate': name,
+                'Type': m_type,
+                'Messages Sent (N)': f"{res['messages_mean']:.1f} +- {res['messages_std']:.1f}",
+                'Messages (Mean)': res['messages_mean'],
+                'Total Security': f"{res['security_mean']:.1f} +- {res['security_std']:.1f}",
+                'Security (Mean)': res['security_mean'],
+                'SETOR': f"{res['setor_mean']:.4f} +- {res['setor_std']:.4f}",
+                'SETOR (Mean)': res['setor_mean'],
+                'Cumulative Reward': f"{res['reward_mean']:.1f} +- {res['reward_std']:.1f}",
+                'Action Dist (AES/Cha/ASC)': f"{res['action_pcts']['AES-256']:.1f}% / {res['action_pcts']['ChaCha20']:.1f}% / {res['action_pcts']['ASCON']:.1f}%"
+            })
+            print(f"  {name:<45} | N: {res['messages_mean']:5.1f} | SETOR: {res['setor_mean']:.4f} | Rew: {res['reward_mean']:6.1f} | {res['action_pcts']['AES-256']:4.1f}% AES")
+
+    df_sens = pd.DataFrame(records)
+    sens_csv = os.path.join(output_dir, 'sensitivity_analysis.csv')
+    df_sens.to_csv(sens_csv, index=False)
+    print(f"\n[SAVED] Energy sensitivity analysis exported to: {sens_csv}")
+
+
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Unified Evaluation Suite (Benchmark-Calibrated & Legacy)")
-    parser.add_argument('--env', choices=['calibrated', 'legacy', 'all'], default='calibrated',
-                        help="Environment mode: 'calibrated' (benchmark figures) or 'legacy' (historical simulation) or 'all'")
+    parser = argparse.ArgumentParser(description="Unified Evaluation Suite (Smartphone, Calibrated, Legacy)")
+    parser.add_argument('--env', choices=['smartphone', 'calibrated', 'legacy', 'all'], default='smartphone',
+                        help="Environment mode: 'smartphone' (ARM mobile cpb aggregate), 'calibrated' (PC benchmark figures) or 'legacy' (historical simulation) or 'all'")
+    parser.add_argument('--outdir', type=str, default='phone_calibration',
+                        help="Output directory (default: phone_calibration)")
+    parser.add_argument('--episodes', type=int, default=500,
+                        help="Number of evaluation episodes (default: 500)")
+    parser.add_argument('--sensitivity', action='store_true',
+                        help="Run energy parameter sensitivity analysis (+/- 20%)")
     args = parser.parse_args()
 
+    if args.sensitivity:
+        run_sensitivity_analysis(output_dir=args.outdir, env_mode='smartphone')
+
     if args.env == 'all':
-        print("\n>>> RUNNING BENCHMARK-CALIBRATED EVALUATION <<<")
-        run_full_evaluation(env_mode='benchmark_calibrated')
+        print("\n>>> RUNNING SMARTPHONE CALIBRATED EVALUATION <<<")
+        run_full_evaluation(output_dir=args.outdir, env_mode='smartphone')
+        print("\n>>> RUNNING PC BENCHMARK-CALIBRATED EVALUATION <<<")
+        run_full_evaluation(output_dir='evaluation_results', env_mode='benchmark_calibrated')
         print("\n>>> RUNNING HISTORICAL LEGACY EVALUATION <<<")
-        run_full_evaluation(env_mode='simulation_legacy')
-    elif args.env == 'legacy':
-        run_full_evaluation(env_mode='simulation_legacy')
+        run_full_evaluation(output_dir='evaluation_results', env_mode='simulation_legacy')
+    elif args.env == 'smartphone':
+        run_full_evaluation(output_dir=args.outdir, env_mode='smartphone')
+    elif args.env == 'calibrated':
+        run_full_evaluation(output_dir=args.outdir, env_mode='benchmark_calibrated')
     else:
-        run_full_evaluation(env_mode='benchmark_calibrated')
+        run_full_evaluation(output_dir=args.outdir, env_mode='simulation_legacy')
 
 
 if __name__ == '__main__':

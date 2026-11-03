@@ -61,6 +61,17 @@ class EncryptionEnvironment:
         'ASCON':    {'S': 0.4, 'E': 0.20}   # Python benchmark throughput (0.16 - 0.58 MB/s), 128-bit
     }
 
+    # 4. Smartphone mobile calibration specifications (literature aggregate eBACS/RFC 8439 on ARM):
+    #    ChaCha20-Poly1305: 10 cpb -> BaseCost 0.10% -> E = 0.10 / 0.10 = 1.000
+    #    AES-256-GCM      : 22 cpb -> BaseCost 0.22% -> E = 0.10 / 0.22 = 0.455
+    #    Ascon-AEAD128    : 18 cpb -> BaseCost 0.18% -> E = 0.10 / 0.18 = 0.556
+    SMARTPHONE_COST = {'AES-256': 0.22, 'ChaCha20': 0.10, 'ASCON': 0.18}
+    SMARTPHONE_SPECS = {
+        'AES-256':  {'S': 1.0, 'E': 0.455},  # Software AES on ARM without AES-NI (22 cpb)
+        'ChaCha20': {'S': 0.7, 'E': 1.000},  # ARX constant-time ARM integer ALU (10 cpb)
+        'ASCON':    {'S': 0.4, 'E': 0.556}   # Ascon-AEAD128 (NIST SP 800-232, 18 cpb)
+    }
+
     def __init__(
         self,
         threat: Optional[int] = None,
@@ -69,9 +80,11 @@ class EncryptionEnvironment:
         signal: Optional[int] = None,
         size: Optional[int] = None,
         priority: Optional[int] = None,
-        mode: str = 'simulation_legacy'
+        mode: str = 'simulation_legacy',
+        energy_scale: float = 1.0
     ):
         self.mode = mode
+        self.energy_scale = float(energy_scale)
         self.threat: int = threat if threat is not None else self._sample_threat()
         self.network: str = network if network is not None else self._sample_network()
         self.battery: float = float(battery if battery is not None else 100.0)
@@ -184,7 +197,13 @@ class EncryptionEnvironment:
         w_sec /= total
         w_eff /= total
 
-        specs = self.BENCHMARK_SPECS if self.mode == 'benchmark_calibrated' else self.LEGACY_SPECS
+        if self.mode in ['smartphone', 'mobile']:
+            specs = self.SMARTPHONE_SPECS
+        elif self.mode == 'benchmark_calibrated':
+            specs = self.BENCHMARK_SPECS
+        else:
+            specs = self.LEGACY_SPECS
+
         spec = specs[action]
         reward = (w_sec * spec['S']) + (w_eff * spec['E'])
         return reward * 100.0
@@ -197,15 +216,22 @@ class EncryptionEnvironment:
         size_label = self.get_labels()['size']
         size_multiplier = self.LEGACY_SIZE_MAP[size_label]
 
-        if self.mode == 'benchmark_calibrated':
-            proc_cost = self.BENCHMARK_COST[action] * size_multiplier
+        if self.mode in ['smartphone', 'mobile']:
+            proc_cost = (self.SMARTPHONE_COST[action] * self.energy_scale) * size_multiplier
             overhead_val = self.BENCHMARK_OVERHEAD[size_label]
-            trans_cost = overhead_val * (size_multiplier * 0.1)
+            trans_cost = (overhead_val * (size_multiplier * 0.1)) * self.energy_scale
             total_cost = proc_cost + trans_cost
             return proc_cost, trans_cost, total_cost
 
-        proc_cost = self.LEGACY_COST[action] * size_multiplier
-        trans_cost = self.LEGACY_OVERHEAD[action] * (size_multiplier * 0.1)
+        if self.mode == 'benchmark_calibrated':
+            proc_cost = (self.BENCHMARK_COST[action] * self.energy_scale) * size_multiplier
+            overhead_val = self.BENCHMARK_OVERHEAD[size_label]
+            trans_cost = (overhead_val * (size_multiplier * 0.1)) * self.energy_scale
+            total_cost = proc_cost + trans_cost
+            return proc_cost, trans_cost, total_cost
+
+        proc_cost = (self.LEGACY_COST[action] * self.energy_scale) * size_multiplier
+        trans_cost = (self.LEGACY_OVERHEAD[action] * (size_multiplier * 0.1)) * self.energy_scale
         total_cost = proc_cost + trans_cost
         return proc_cost, trans_cost, total_cost
 

@@ -80,6 +80,35 @@ class TestEnvironmentEquivalence(unittest.TestCase):
         p_asc, t_asc, tot_asc = env.calculate_cost('ASCON')
         self.assertAlmostEqual(tot_asc, 0.50, places=4)
 
+    def test_smartphone_mode_and_sensitivity(self):
+        """Verify smartphone mode base costs, specs, and energy_scale sensitivity."""
+        env = core_env.EncryptionEnvironment(mode='smartphone', size=1, energy_scale=1.0) # size=1 -> small
+        # For small payload (M=1, O=1.500)
+        # AES-256: proc = 0.22 * 1 = 0.22, trans = 1.500 * 0.1 = 0.15 -> total = 0.37
+        # ChaCha20: proc = 0.10 * 1 = 0.10, trans = 1.500 * 0.1 = 0.15 -> total = 0.25
+        # ASCON: proc = 0.18 * 1 = 0.18, trans = 1.500 * 0.1 = 0.15 -> total = 0.33
+        p_aes, t_aes, tot_aes = env.calculate_cost('AES-256')
+        self.assertAlmostEqual(tot_aes, 0.37, places=4)
+        p_cha, t_cha, tot_cha = env.calculate_cost('ChaCha20')
+        self.assertAlmostEqual(tot_cha, 0.25, places=4)
+        p_asc, t_asc, tot_asc = env.calculate_cost('ASCON')
+        self.assertAlmostEqual(tot_asc, 0.33, places=4)
+
+        # Check efficiency scores
+        self.assertEqual(env.SMARTPHONE_SPECS['AES-256']['E'], 0.455)
+        self.assertEqual(env.SMARTPHONE_SPECS['ChaCha20']['E'], 1.000)
+        self.assertEqual(env.SMARTPHONE_SPECS['ASCON']['E'], 0.556)
+
+        # Test -20% sensitivity scaling (energy_scale=0.8)
+        env_low = core_env.EncryptionEnvironment(mode='smartphone', size=1, energy_scale=0.8)
+        _, _, tot_aes_low = env_low.calculate_cost('AES-256')
+        self.assertAlmostEqual(tot_aes_low, 0.37 * 0.8, places=4)
+
+        # Test +20% sensitivity scaling (energy_scale=1.2)
+        env_high = core_env.EncryptionEnvironment(mode='smartphone', size=1, energy_scale=1.2)
+        _, _, tot_aes_high = env_high.calculate_cost('AES-256')
+        self.assertAlmostEqual(tot_aes_high, 0.37 * 1.2, places=4)
+
 
 if __name__ == '__main__':
     unittest.main()
