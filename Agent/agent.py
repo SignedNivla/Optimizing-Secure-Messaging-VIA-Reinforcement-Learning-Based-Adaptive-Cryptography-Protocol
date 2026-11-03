@@ -1,99 +1,106 @@
-import pickle
-import random
+"""
+Agent.agent (Backward Compatibility Shim)
+=========================================
+Compatibility shim delegating to the unified `core.agent.QLearningAgent`.
 
-from Agent.encryption_environment import EncryptionEnvironment
-from Agent.state_component import BatteryState, NetworkState, PriorityState, SignalState, SizeState, ThreatState
+Preserves 100% API compatibility for legacy scripts (test.py, legacy callers):
+- _choose_action(state, training)
+- _update_q_table(state, action, reward, next_state)
+- _load_brain()
+- _save_brain()
+- test(threat, network, battery, signal, size, priority)
+- train(episodes, training)
+"""
 
-class QLearningAgent:
-    def __init__(self,alpha=0.1,epsilon=0.5, gamma = 0.9, filename = 'agent_brain.pkl'):
-        self.q_table = {}
-        self.alpha = alpha
-        self.epsilon = epsilon
-        self.gamma = gamma
-        self.action = ['AES-256','ChaCha20','ASCON']
-        self.filename = filename
+import os
+from typing import Optional, Any
 
-    def _save_brain(self):
-        """Saves the Q-Table to your computer."""
-        with open(self.filename, 'wb') as f:
-            pickle.dump(self.q_table, f)
-        print("Brain saved successfully!")
+from core.agent import QLearningAgent as CoreQLearningAgent
+from core.environment import EncryptionEnvironment as CoreEnv
+from Agent.state_component import (
+    BatteryState,
+    NetworkState,
+    PriorityState,
+    SignalState,
+    SizeState,
+    ThreatState
+)
 
-    def _load_brain(self):
-        """Uploads a previously saved Q-Table."""
-        try:
-            with open(self.filename, 'rb') as f:
-                self.q_table = pickle.load(f)
+
+class QLearningAgent(CoreQLearningAgent):
+    """Legacy-compatible QLearningAgent wrapper delegating to core.agent.QLearningAgent."""
+
+    def __init__(
+        self,
+        alpha: float = 0.1,
+        epsilon: float = 0.5,
+        gamma: float = 0.9,
+        filename: str = 'agent_brain.pkl'
+    ):
+        # NOTE: Positional arguments in legacy: (alpha, epsilon, gamma, filename)
+        super().__init__(
+            alpha=alpha,
+            gamma=gamma,
+            epsilon=epsilon,
+            filename=filename
+        )
+        self.action = self.actions  # Legacy alias
+        if filename and os.path.exists(filename):
+            self._load_brain()
+
+    def _choose_action(self, state: Any, training: bool = True) -> str:
+        return self.select_action(state, training=training)
+
+    def _update_q_table(self, state: Any, action: str, reward: float, next_state: Any) -> None:
+        self.update_q(state, action, reward, next_state)
+
+    def _initialize_state(self, state: Any) -> None:
+        self._init_state(state)
+
+    def _load_brain(self) -> bool:
+        success = self.load_brain()
+        if success:
             print("Brain loaded! I remember my training.")
             return False
-        except FileNotFoundError:
+        else:
             print("No saved brain found. Starting fresh.")
             return True
 
-    def _initialize_state(self,state):
-        if state not in self.q_table:
-            self.q_table[state] = {action: 0.0 for action in self.action}
-    
-    def _choose_action(self,state,training=True):
-        """Strategi Epsilon-Greedy"""
-        self._initialize_state(state)
-        curr_epsilon = self.epsilon if training else 0
-        if random.uniform(0, 1) < curr_epsilon:
-            return random.choice(self.action)
-        else:
-            state_scores = self.q_table[state]
-            best_action = max(state_scores, key=state_scores.get)
-            return best_action
-        
-    def _update_q_table(self,state, action, reward, next_state):
-        """Tulis hasil ujian (Reward) ke dalam buku catatan menggunakan rumus matematika"""
-        self._initialize_state(state)
-        self._initialize_state(next_state)
+    def _save_brain(self) -> None:
+        self.save_brain()
+        print("Brain saved successfully!")
 
-        future_rewards = self.q_table[next_state].values()
-        max_future = max(future_rewards)
-        
-        old_value = self.q_table[state][action]
-        target = reward + (self.gamma * max_future)
-        new_value = old_value + self.alpha * (target -old_value)
-        self.q_table[state][action] = new_value
+    def test(
+        self,
+        threat: Optional[Any] = None,
+        network: Optional[Any] = None,
+        battery: Optional[Any] = None,
+        signal: Optional[Any] = None,
+        size: Optional[Any] = None,
+        priority: Optional[Any] = None
+    ) -> None:
+        """Executes a single test case report matching legacy formatting."""
+        t_val = threat.get_value() if hasattr(threat, 'get_value') else threat
+        n_val = network.get_value() if hasattr(network, 'get_value') else network
+        b_val = battery.get_value() if hasattr(battery, 'get_value') else battery
+        s_val = signal.get_value() if hasattr(signal, 'get_value') else signal
+        sz_val = size.get_value() if hasattr(size, 'get_value') else size
+        p_val = priority.get_value() if hasattr(priority, 'get_value') else priority
 
-    def train(self,epsiodes = 10000, training = True):
-        self._load_brain()
-        history = {'reward':[],'battery_life':[]}
-        env = EncryptionEnvironment()
-        for i in range(epsiodes):
-            total_reward = 0
-            steps = 0
-            current_state = env.reset()
-            done = False
-            while not done:
-                action = self._choose_action(current_state,training)
-                next_state,reward,done = env.step(action)
+        env = CoreEnv(
+            threat=t_val,
+            network=n_val,
+            battery=b_val,
+            signal=s_val,
+            size=sz_val,
+            priority=p_val,
+            mode='simulation_legacy'
+        )
+        action = self.select_action(env.get_current_state(), training=False)
+        labels = env.get_labels()
 
-                self._update_q_table(current_state,action,reward,next_state)
-
-                current_state = next_state
-                total_reward += reward
-                steps += 1
-            history['reward'].append(total_reward)
-            history['battery_life'].append(steps)
-            
-            if i % 100 == 0:
-                print(f"Threat: {env.threat.get_label()}, Battery: {env.battery.get_label()}, Size: {env.size.get_label()} -> Action: {action}")
-                print(f"Episode {i}: Avg Reward: {sum(history['reward'][-100:])/100}, Battery Life: {history['battery_life'][-1]}")
-        self._save_brain()
-        return history
-    
-    def test(self, threat:ThreatState = None,network:NetworkState = None,battery:BatteryState = None,signal:SignalState = None,size:SizeState = None,priority:PriorityState = None):
-        is_not_exist = self._load_brain()
-        if is_not_exist: 
-            print("Error: No brain found. Train the agent first.")
-            return
-        env = EncryptionEnvironment(threat,network,battery,signal,size,priority)
-        action = self._choose_action(env._get_current_state(),False)
         print("--- Agent Decision Report ---")
-        print(f"Context: {env.threat.get_label()} threat on a {env.network.get_label()} network.")
-        print(f"Device Status: Battery at {env.battery.get_label()}%, Signal is {env.signal.get_label()}.")
-        print(f"Data Info: {env.size.get_label()} payload with {env.priority.get_label()} priority.")
+        print(f"Context: {labels['threat']} threat on a {labels['network']} network.")
+        print(f"Device Status: Battery at {labels['battery']}%, Signal is {labels['signal']}.")
+        print(f"Data Info: {labels['size']} payload with {labels['priority']} priority.")
         print(f"RESULT >> Agent selected: **{action}**")

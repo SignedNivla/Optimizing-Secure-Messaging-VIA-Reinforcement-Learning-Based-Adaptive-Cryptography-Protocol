@@ -13,9 +13,12 @@ test_case = {
     'critical': (3, "public", 5, 0, 1000, 3)
 }
 
-ag = agent(filename='final_model.pkl')
+agent_names = ["initial_model.pkl","agent_brain2.pkl","agent_brain3.pkl","agent_brain4.pkl","final_model.pkl"]
 
-for test in test_case.keys():
-    print(f'Test for {test}')
-    params = transform_test_case(*test_case[test])
-    ag.test(*params)
+for agent_name in agent_names:
+    print(f"==========={agent_name}============")
+    for test in test_case.keys():
+        ag = agent(filename=agent_name)
+        print(f'Test for {test}')
+        params = transform_test_case(*test_case[test])
+        ag.test(*params)
