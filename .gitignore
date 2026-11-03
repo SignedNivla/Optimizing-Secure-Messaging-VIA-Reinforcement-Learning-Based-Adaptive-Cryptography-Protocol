@@ -2,3 +2,9 @@
 .venv/
 *__pycache__
 *.pkl
+benchmark_raw_results.json
+evaluation_results/
+tuning_results/
+RESULT.docx
+EXPLAIN.md
+Adaptive_Cryptography_Revisions_Resolution.md

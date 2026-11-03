@@ -80,16 +80,21 @@ def check_all_model_hashes() -> Dict[str, str]:
 
 
 class TunedEnvironment(EncryptionEnvironment):
-    """Configurable environment supporting legacy, calibrated, aligned, and survival reward regimes."""
+    """Configurable environment supporting legacy, calibrated, smartphone, aligned, and survival reward regimes."""
 
-    def __init__(self, mode: str = 'calibrated', survival_bonus: float = 0.0):
-        env_mode = 'simulation_legacy' if mode == 'legacy' else 'benchmark_calibrated'
-        super().__init__(mode=env_mode)
+    def __init__(self, mode: str = 'smartphone', survival_bonus: float = 0.0, energy_scale: float = 1.0):
+        if mode in ['smartphone', 'mobile']:
+            env_mode = 'smartphone'
+        elif mode == 'legacy':
+            env_mode = 'simulation_legacy'
+        else:
+            env_mode = 'benchmark_calibrated'
+        super().__init__(mode=env_mode, energy_scale=energy_scale)
         self.reward_regime = mode
         self.survival_bonus = survival_bonus
 
     def calculate_reward(self, action: str) -> float:
-        if self.reward_regime == 'legacy':
+        if self.reward_regime in ['smartphone', 'mobile', 'legacy']:
             return super().calculate_reward(action) + self.survival_bonus
 
         # Benchmark calibrated specs:
@@ -273,17 +278,27 @@ def compute_pareto_score(
     metrics: Dict[str, Any],
     w_msg: float = 0.35,
     w_sec: float = 0.35,
-    w_adapt: float = 0.30
+    w_adapt: float = 0.30,
+    regime: str = 'smartphone'
 ) -> float:
     """
-    Calculates multi-objective score normalized against Static ChaCha20 and AES:
-    - w_msg: Message lifetime normalized to 120 msgs
-    - w_sec: SETOR normalized to 0.85
+    Calculates multi-objective score normalized against baseline targets:
+    - w_msg: Message lifetime normalized to baseline capacity
+    - w_sec: SETOR normalized to baseline
     - w_adapt: High-threat AES usage (ensures security adaptiveness)
     """
-    norm_msg = min(1.0, metrics['messages_mean'] / 118.3)
-    norm_setor = min(1.0, metrics['setor_mean'] / 0.8281)
-    norm_adapt = min(1.0, metrics['high_threat_aes_pct'] / 35.0)
+    if regime in ['smartphone', 'mobile']:
+        norm_msg = metrics['messages_mean'] / 110.0
+        norm_setor = metrics['setor_mean'] / 0.85
+        norm_adapt = metrics['high_threat_aes_pct'] / 50.0
+    elif regime == 'calibrated':
+        norm_msg = metrics['messages_mean'] / 110.6
+        norm_setor = metrics['setor_mean'] / 1.0572
+        norm_adapt = metrics['high_threat_aes_pct'] / 70.0
+    else:
+        norm_msg = metrics['messages_mean'] / 118.3
+        norm_setor = metrics['setor_mean'] / 0.8281
+        norm_adapt = metrics['high_threat_aes_pct'] / 35.0
     return (w_msg * norm_msg) + (w_sec * norm_setor) + (w_adapt * norm_adapt)
 
 
@@ -341,9 +356,15 @@ def run_grid_search(
             )
 
             # Evaluate candidate on 200 episodes
-            target_env = 'simulation_legacy' if reward_mode == 'legacy' else 'benchmark_calibrated'
+            if reward_mode in ['smartphone', 'mobile']:
+                target_env = 'smartphone'
+            elif reward_mode == 'legacy':
+                target_env = 'simulation_legacy'
+            else:
+                target_env = 'benchmark_calibrated'
+
             metrics = evaluate_candidate(agent, eval_episodes=200, seed=42, env_mode=target_env)
-            score = compute_pareto_score(metrics)
+            score = compute_pareto_score(metrics, regime=reward_mode)
             elapsed = time.perf_counter() - t0
 
             print(f" Done ({elapsed:.1f}s) | N: {metrics['messages_mean']:5.1f} | SETOR: {metrics['setor_mean']:.4f} | Rew: {metrics['reward_mean']:6.1f} | Score: {score:.4f} | AES(High): {metrics['high_threat_aes_pct']:4.1f}%")
@@ -409,14 +430,16 @@ def run_grid_search(
 
 def main():
     parser = argparse.ArgumentParser(description="Adaptive Cryptography IoT - Hyperparameter Tuning & Grid Search")
-    parser.add_argument('--mode', type=str, default='calibrated', choices=['calibrated', 'legacy', 'aligned', 'survival'],
-                        help="Reward regime: 'calibrated' (benchmark figures), 'legacy' (original), 'aligned' (transmission cost), 'survival' (longevity bonus)")
-    parser.add_argument('--survival-bonus', type=float, default=0.5,
-                        help="Step survival reward bonus when --mode survival is selected (default: 0.5)")
+    parser.add_argument('--mode', type=str, default='smartphone', choices=['smartphone', 'calibrated', 'legacy', 'aligned', 'survival'],
+                        help="Reward regime: 'smartphone' (ARM mobile cpb aggregate), 'calibrated' (PC benchmark figures), 'legacy' (original), 'aligned' (transmission cost), 'survival' (longevity bonus)")
+    parser.add_argument('--survival-bonus', type=float, default=0.0,
+                        help="Step survival reward bonus when --mode survival is selected (default: 0.0)")
     parser.add_argument('--episodes', type=int, default=10000,
                         help="Number of training episodes per candidate trial (default: 10000)")
-    parser.add_argument('--output', type=str, default='best_tuned_model.pkl',
-                        help="Target output pickle file for best candidate (default: best_tuned_model.pkl)")
+    parser.add_argument('--outdir', type=str, default='phone_calibration',
+                        help="Directory to save leaderboard and model (default: phone_calibration)")
+    parser.add_argument('--output', type=str, default='best_smartphone_model.pkl',
+                        help="Target output pickle file for best candidate (default: best_smartphone_model.pkl)")
     parser.add_argument('--fast', action='store_true',
                         help="Fast sweep mode (fewer trials with 5000 episodes for quick feedback)")
 
@@ -424,21 +447,23 @@ def main():
 
     # Safety check: prevent overwriting historical models
     legacy_files = ['final_model.pkl', 'initial_model.pkl', 'agent_brain2.pkl', 'agent_brain3.pkl', 'agent_brain4.pkl']
-    if args.output in legacy_files:
+    if os.path.basename(args.output) in legacy_files:
         print(f"[BLOCKED] Target '{args.output}' is an original legacy model.")
         print("Please specify a new output name via `--output <new_model_name>.pkl`.")
         sys.exit(1)
 
     if args.fast:
-        alpha_candidates = [0.10, 0.20]
-        gamma_candidates = [0.95, 0.999]
+        alpha_candidates = [0.08, 0.10, 0.14]
+        gamma_candidates = [0.90, 0.95, 0.99]
         episodes = 5000
     else:
-        alpha_candidates = [0.05, 0.10, 0.14, 0.20]
-        gamma_candidates = [0.90, 0.95, 0.99, 0.995, 0.999]
+        alpha_candidates = [0.05, 0.08, 0.10, 0.14, 0.20]
+        gamma_candidates = [0.85, 0.90, 0.95, 0.98, 0.999]
         episodes = args.episodes
 
     s_bonus = args.survival_bonus if args.mode == 'survival' else 0.0
+
+    target_path = os.path.join(args.outdir, os.path.basename(args.output))
 
     run_grid_search(
         alpha_list=alpha_candidates,
@@ -446,8 +471,14 @@ def main():
         episodes=episodes,
         reward_mode=args.mode,
         survival_bonus=s_bonus,
-        output_model_path=args.output
+        output_model_path=target_path,
+        results_dir=args.outdir
     )
+
+    # Also save a copy to root output name if different
+    if target_path != args.output and os.path.exists(target_path):
+        import shutil
+        shutil.copy2(target_path, args.output)
 
 
 if __name__ == '__main__':
